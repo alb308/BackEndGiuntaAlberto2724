@@ -1,0 +1,319 @@
+# BetFlow Manager - GraphQL Schema
+
+scalar UUID
+scalar BigDecimal
+scalar DateTime
+scalar Date
+
+# ================== TYPES ==================
+
+type Identity {
+    id: UUID!
+    firstName: String!
+    lastName: String!
+    fullName: String!
+    fiscalCode: String!
+    email: String
+    phone: String
+    documentExpiryDate: Date
+    notes: String
+    accounts: [Account!]!
+    totalBalance: BigDecimal
+    profit: IdentityProfit
+}
+
+type Platform {
+    id: UUID!
+    name: String!
+    type: PlatformType!
+    website: String
+    notes: String
+    accounts: [Account!]!
+}
+
+type Account {
+    id: UUID!
+    username: String!
+    email: String
+    currentBalance: BigDecimal!
+    isActive: Boolean!
+    isLimited: Boolean!
+    limitedDate: Date
+    notes: String
+    identity: Identity!
+    platform: Platform!
+    promotions: [Promotion!]!
+    operations: [FinancialOperation!]!
+}
+
+type Promotion {
+    id: UUID!
+    description: String!
+    bonusAmount: BigDecimal
+    rolloverRequirement: BigDecimal
+    currentRollover: BigDecimal
+    status: PromotionStatus!
+    deadlineDate: Date
+    notes: String
+    account: Account!
+}
+
+interface FinancialOperation {
+    id: UUID!
+    operationDate: DateTime!
+    amount: BigDecimal!
+    notes: String
+    operationType: String!
+    account: Account!
+}
+
+type Deposit implements FinancialOperation {
+    id: UUID!
+    operationDate: DateTime!
+    amount: BigDecimal!
+    notes: String
+    operationType: String!
+    account: Account!
+    paymentMethod: String
+}
+
+type Withdrawal implements FinancialOperation {
+    id: UUID!
+    operationDate: DateTime!
+    amount: BigDecimal!
+    notes: String
+    operationType: String!
+    account: Account!
+    status: WithdrawalStatus!
+    arrivalDate: DateTime
+}
+
+type BetOperation implements FinancialOperation {
+    id: UUID!
+    operationDate: DateTime!
+    amount: BigDecimal!
+    notes: String
+    operationType: String!
+    account: Account!
+    eventName: String!
+    odds: Float!
+    outcome: BetOutcome
+}
+
+type IdentityProfit {
+    identityId: UUID!
+    identityFullName: String!
+    totalDeposits: BigDecimal!
+    totalWithdrawals: BigDecimal!
+    totalCurrentBalance: BigDecimal!
+    netProfit: BigDecimal!
+    totalAccounts: Int!
+}
+
+type Dashboard {
+    totalIdentities: Int!
+    totalAccounts: Int!
+    activeAccounts: Int!
+    limitedAccounts: Int!
+    totalPlatforms: Int!
+    totalDeposits: BigDecimal!
+    totalWithdrawals: BigDecimal!
+    totalCurrentBalance: BigDecimal!
+    overallNetProfit: BigDecimal!
+    activePromotions: Int!
+    completedPromotions: Int!
+    expiredPromotions: Int!
+    expiringDocumentsCount: Int!
+    expiringPromotionsCount: Int!
+    topIdentitiesByProfit: [IdentityProfit!]!
+}
+
+type User {
+    id: UUID!
+    username: String!
+    email: String!
+    firstName: String
+    lastName: String
+    role: UserRole!
+    avatarUrl: String
+}
+
+# ================== ENUMS ==================
+
+enum PlatformType {
+    BOOKMAKER
+    EXCHANGE
+}
+
+enum PromotionStatus {
+    ACTIVE
+    COMPLETED
+    EXPIRED
+    CANCELLED
+}
+
+enum WithdrawalStatus {
+    REQUESTED
+    PROCESSING
+    COMPLETED
+    REJECTED
+}
+
+enum BetOutcome {
+    WIN
+    LOSS
+    VOID
+}
+
+enum UserRole {
+    ADMIN
+    MANAGER
+    OBSERVER
+}
+
+# ================== QUERIES ==================
+
+type Query {
+    # Identities
+    identities: [Identity!]!
+    identity(id: UUID!): Identity
+    identitiesByManager(managerId: UUID!): [Identity!]!
+    expiringDocuments(days: Int!): [Identity!]!
+
+    # Platforms
+    platforms: [Platform!]!
+    platform(id: UUID!): Platform
+    platformsByType(type: PlatformType!): [Platform!]!
+    searchPlatforms(name: String!): [Platform!]!
+
+    # Accounts
+    accounts: [Account!]!
+    account(id: UUID!): Account
+    accountsByIdentity(identityId: UUID!): [Account!]!
+    accountsByPlatform(platformId: UUID!): [Account!]!
+    activeAccounts: [Account!]!
+    limitedAccounts: [Account!]!
+
+    # Promotions
+    promotions: [Promotion!]!
+    promotion(id: UUID!): Promotion
+    promotionsByAccount(accountId: UUID!): [Promotion!]!
+    promotionsByStatus(status: PromotionStatus!): [Promotion!]!
+    expiringPromotions(days: Int!): [Promotion!]!
+
+    # Financial Operations
+    deposits: [Deposit!]!
+    depositsByAccount(accountId: UUID!): [Deposit!]!
+    withdrawals: [Withdrawal!]!
+    withdrawalsByAccount(accountId: UUID!): [Withdrawal!]!
+    pendingWithdrawals: [Withdrawal!]!
+    bets: [BetOperation!]!
+    betsByAccount(accountId: UUID!): [BetOperation!]!
+    pendingBets: [BetOperation!]!
+
+    # Statistics
+    dashboard: Dashboard!
+    identityProfit(identityId: UUID!): IdentityProfit!
+    allIdentityProfits: [IdentityProfit!]!
+    profitableIdentities: [IdentityProfit!]!
+    unprofitableIdentities: [IdentityProfit!]!
+
+    # Users
+    users: [User!]!
+    user(id: UUID!): User
+    usersByRole(role: UserRole!): [User!]!
+}
+
+# ================== MUTATIONS ==================
+
+type Mutation {
+    # Identity mutations
+    createIdentity(input: IdentityInput!): Identity!
+    updateIdentity(id: UUID!, input: IdentityInput!): Identity!
+    deleteIdentity(id: UUID!): Boolean!
+
+    # Platform mutations
+    createPlatform(input: PlatformInput!): Platform!
+    updatePlatform(id: UUID!, input: PlatformInput!): Platform!
+    deletePlatform(id: UUID!): Boolean!
+
+    # Account mutations
+    createAccount(input: AccountInput!): Account!
+    updateAccount(id: UUID!, input: AccountInput!): Account!
+    updateAccountBalance(id: UUID!, balance: BigDecimal!): Account!
+    deleteAccount(id: UUID!): Boolean!
+
+    # Promotion mutations
+    createPromotion(input: PromotionInput!): Promotion!
+    updatePromotion(id: UUID!, input: PromotionInput!): Promotion!
+    updateRollover(id: UUID!, currentRollover: BigDecimal!): Promotion!
+    deletePromotion(id: UUID!): Boolean!
+
+    # Financial Operation mutations
+    createDeposit(input: DepositInput!): Deposit!
+    createWithdrawal(input: WithdrawalInput!): Withdrawal!
+    updateWithdrawalStatus(id: UUID!, status: WithdrawalStatus!): Withdrawal!
+    createBet(input: BetInput!): BetOperation!
+    updateBetOutcome(id: UUID!, outcome: BetOutcome!): BetOperation!
+    deleteOperation(id: UUID!): Boolean!
+}
+
+# ================== INPUTS ==================
+
+input IdentityInput {
+    firstName: String!
+    lastName: String!
+    fiscalCode: String!
+    email: String
+    phone: String
+    documentExpiryDate: Date
+    notes: String
+    managerId: UUID
+}
+
+input PlatformInput {
+    name: String!
+    type: PlatformType!
+    website: String
+    notes: String
+}
+
+input AccountInput {
+    username: String!
+    email: String
+    currentBalance: BigDecimal
+    isActive: Boolean
+    notes: String
+    identityId: UUID!
+    platformId: UUID!
+}
+
+input PromotionInput {
+    description: String!
+    bonusAmount: BigDecimal
+    rolloverRequirement: BigDecimal
+    deadlineDate: Date
+    notes: String
+    accountId: UUID!
+}
+
+input DepositInput {
+    amount: BigDecimal!
+    paymentMethod: String
+    notes: String
+    accountId: UUID!
+}
+
+input WithdrawalInput {
+    amount: BigDecimal!
+    notes: String
+    accountId: UUID!
+}
+
+input BetInput {
+    amount: BigDecimal!
+    eventName: String!
+    odds: Float!
+    notes: String
+    accountId: UUID!
+}
